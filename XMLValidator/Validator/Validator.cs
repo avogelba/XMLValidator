@@ -23,19 +23,27 @@ namespace XMLValidator.Validator
         /// <returns>true: if it is a XML</returns>
         public static bool isXML(string xmlFile, out string error)
         {
-            using (FileStream input = new FileStream(xmlFile, FileMode.Open))
+            error = "";
+            try
             {
-                try
+                using (FileStream input = new FileStream(xmlFile, FileMode.Open))
                 {
-                    var doc = XDocument.Load(input);
-                }
-                catch (Exception exFS)
-                {
-                    error = "\nException:\n"+ exFS.Message;
-                    return false;
+                    try
+                    {
+                        var doc = XDocument.Load(input);
+                    }
+                    catch (Exception exFS)
+                    {
+                        error += "\nException:\n" + exFS.Message;
+                        return false;
+                    }
                 }
             }
-            error = "";
+            catch (Exception exU)
+            {
+                error+= "\nException:\n" + exU.Message;
+            }
+            
             return true;
         }//isXML
         #endregion
@@ -50,29 +58,40 @@ namespace XMLValidator.Validator
         public static bool isWellFormedXML(string xmlFile, out string errorString)
         {
             //ignore DTD
+            errorString = "";
+            bool noError = true;
             var xmlReaderSettings = new XmlReaderSettings { DtdProcessing = DtdProcessing.Ignore, XmlResolver = null };
             try
             {
                 using (var reader = XmlReader.Create(new System.IO.StreamReader(xmlFile), xmlReaderSettings))
                 {
-                    var document = new XmlDocument();
-                    document.Load(reader);
+                    try
+                    {
+                        var document = new XmlDocument();
+                        document.Load(reader);
+                    }
+                    catch (Exception exU)
+                    {
+                        errorString += "\nException:\n" + exU.Message;
+                        noError = false;
+                    }
                 }
             }
             catch (XmlException exX)
             {
-                errorString = "\nException:\n" + exX.Message;
+                errorString += "\nException:\n" + exX.Message;
                 //Load failed ->not well formed
-                return false;
+                //return false;
+                noError = false;
             }
             catch (Exception exC)
             {
-                errorString = "\nException:\n" + exC.Message;
+                errorString += "\nException:\n" + exC.Message;
                 //Some other error -> maybe well formed after all
-                return false;
+                //return false;
+                noError = false;
             }
-            errorString = "";
-            return true;
+            return noError;
         }//isWellFormedXML
         #endregion 
 
@@ -101,7 +120,8 @@ namespace XMLValidator.Validator
         {
             var xDoc = XDocument.Load(xmlFile);
             var xSchema = new XmlSchemaSet();
-
+            errorString = "";
+            bool noError  = true;
             //Build schema
             try
             {
@@ -109,18 +129,21 @@ namespace XMLValidator.Validator
             }
             catch (XmlSchemaException exX)
             {
-                errorString = "\nException:\n" + exX.Message;
-                return false;
+                errorString += "\nException:\n" + exX.Message;
+                //return false;
+                noError = false;
             }
             catch (ArgumentNullException exA)
             {
-                errorString = "\nException:\n" + exA.Message;
-                return false;
+                errorString += "\nException:\n" + exA.Message;
+                //return false;
+                noError = false;
             }
             catch (Exception exC) //FileNotFoundException and XmlException can also occur, they are not shown as possible exception for XmlSchemaSet.Add() see https://msdn.microsoft.com/en-us/library/s74fh1h1(v=vs.110).aspx
             {
-                errorString = "\nException:\n" + exC.Message;
-                return false;
+                errorString += "\nException:\n" + exC.Message;
+                //return false;
+                noError = false;
             }
 
             //Validate with schema
@@ -130,16 +153,18 @@ namespace XMLValidator.Validator
             }
             catch (XmlSchemaValidationException exB)
             {
-                errorString = "\nException:\n" + exB.Message;
-                return false;
+                errorString += "\nException:\n" + exB.Message;
+                noError = false;
+                //return false;
             }
             catch (Exception exD)
             {
-                errorString = "\nException:\n" + exD.Message;
-                return false;
+                errorString += "\nException:\n" + exD.Message;
+                //return false;
+                noError = false;
             }
-            errorString = "";
-            return true;
+            
+            return noError;
         }//isValidXMLAgainstXSD
 #endregion
 
